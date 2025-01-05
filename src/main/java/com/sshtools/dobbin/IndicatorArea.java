@@ -21,25 +21,42 @@ import java.io.UncheckedIOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 public final class IndicatorArea implements Closeable {
 	
-	private final static class Defaults {
-		private final static IndicatorArea DEFAULT = new IndicatorArea();
-	}
-	
 	private final Map<URL, Path> resourceFiles = new HashMap<>();
 	private final Set<Path> tmpfiles = new LinkedHashSet<>();
+	private final List<Indicator> indicators = new CopyOnWriteArrayList<>();
 	
-	final List<Indicator> indicators = new ArrayList<>();
+	public final static class Builder {
+		private Optional<Consumer<Runnable>> executor = Optional.empty();
+		
+		public Builder loop(Consumer<Runnable> executor) {
+			this.executor = Optional.of(executor);
+			return this;
+		}
+		
+		public IndicatorArea build() {
+			return new IndicatorArea(this);
+		}
+	}
 
-	private IndicatorArea() {
+	private final Optional<Consumer<Runnable>> executor;
+	private ExecutorService defaultExecutor;
+
+	private IndicatorArea(Builder bldr) {
+		this.executor = bldr.executor;
+		
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			tmpfiles.forEach(tf -> {
 				try {
@@ -55,14 +72,25 @@ public final class IndicatorArea implements Closeable {
 		while(!indicators.isEmpty()) {
 			indicators.get(0).close();
 		}
+		
+		if(defaultExecutor != null) {
+			defaultExecutor.shutdown();
+		}
 	}
 
-	public IndicatorBuilder builder() {
-		return new IndicatorBuilder(this);
+	public Indicator.Builder builder() {
+		return new Indicator.Builder(this);
 	}
 	
-	public static IndicatorArea get() {
-		return Defaults.DEFAULT;
+	public void task(Runnable task) {
+		this.executor.ifPresentOrElse(exec -> {
+			exec.accept(task);
+		}, () -> {
+			if(defaultExecutor == null) {
+				defaultExecutor = Executors.newSingleThreadExecutor();
+			}
+			defaultExecutor.submit(task);
+		});
 	}
 	
 	Path resourceToPath(URL resource) {
@@ -96,5 +124,16 @@ public final class IndicatorArea implements Closeable {
 				}
 			}
 		}
+	}
+
+	void add(Indicator indicator) {
+		if(indicators.isEmpty())
+			indicators.add(indicator);
+		else
+			throw new IllegalStateException("Only a single indicator per runtime is currently supported.");
+	}
+
+	void remove(Indicator indicator) {
+		indicators.remove(indicator);
 	}
 }

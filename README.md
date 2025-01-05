@@ -5,60 +5,6 @@
 
 Simple library for "System Tray" support in Java 22 and above on Windows, Mac OS X and Linux.
 
-## Quick Start
-
-Add Maven dependency to your project and create your system tray icon.
-
-```java
-import static com.sshtools.dobbin.IndicatorMenuItem.action;
-import static com.sshtools.dobbin.IndicatorMenuItem.checkbox;
-import static com.sshtools.dobbin.IndicatorMenuItem.label;
-import static com.sshtools.dobbin.IndicatorMenuItem.separator;
-
-public class MyIndicatorTest {
-    public static void main(String[] args) throws Exception {
-        /* Get the indicator area */
-        var area = IndicatorArea.get();
-        
-        /* Use the builder to create an Indicator */
-        try(var indicator = area.builder().
-                
-            /* The initial indicator icon and tooltip */
-            icon(MyIndicatorTest.class.getResource("idle-48.png")).
-            tooltip("Indicator Test").
-            
-            /* Invoked when indicator is left-clicked */
-            onAction((ind) -> {
-                System.out.println("App open! " + ind);
-            }).
-            
-            /* The initial menu. Show when indicator is right-clicked */
-            menu(label("Some label"),
-                action("Action 1", (itm) -> {
-                    System.out.println("Action 1 " + itm);
-                }),
-                checkbox("Always On Top", (itm) -> {}),
-                separator(),
-                action("Quit", (itm) -> {
-                    System.exit(0);
-                })).
-            
-            /* Build the indicator. It will remain until close() is called, 
-             * or in this example when the try-with-resource goes out of scope  */
-            build()) {
-            
-            Thread.sleep(5000);
-            indicator.tooltip("Change the tooltip!");
-            
-            Thread.sleep(5000);
-            indicator.icon(MyIndicatorTest.class.getResource("dialog-error-48.png"));
-        }
-    }
-
-}
-
-```
-
 ## Features
 
  * Single tiny Java utility dependency with no further transitive dependencies.
@@ -67,11 +13,13 @@ public class MyIndicatorTest {
  * Callback may be attached to any supported menu item.
  * Icon, tooltip and menu contents may be changed at any time.
  * Developed for use with  Linux (using QT). Other operating systems including Windows and Mac OS will follow.
+ * Integrates with your GUI toolkits thread.
  
 ### Planned Or In Progress
 
- * Windows support
+ * Windows and Mac OS support (and other platforms based on demand)
  * Icons in menu items
+ * Accelerators in menu items
 
 ## Rationale
 
@@ -138,4 +86,96 @@ build system you use. For example, for Maven itself :-
 </dependencies>
 ```
 
+## Usage
 
+The general life cycle of an indicator is ..
+
+ * Create a `IndicatorArea.Builder`. 
+ * Configure the builder, for example integrate with your GUI toolkit thread.
+ * Call `build()` to obtain the `IndicatorArea` instance. An area in the future may hold multiple indicators.
+ * Obtain an `Indicator.Builder` using `IndicatorArea.builder()`. 
+ * Configure the indicators icon, text, and menu structure using the builder.
+ * Call `build()` to obtain on `Indicator` instance. The indicator becomes visible at this point.
+ * Update the attributes of the `Indicator` at any time. Any changes to the indicator must be done on the loop thread. You can submit the task either directly, or using `IndicatorArea.task()`. 
+ * Close the `Indicator` using `Indicator.close()`.
+ * Close the `IndicatorArea` using `IndicatorArea.close()`.
+
+### Threading
+
+It is important that any changes to indicators are performed on the thread that created them. The recommended method is to integrate with your GUI toolkits main thread (if you are using one at all).
+
+When creating the `IndicatorArea`, you can provide a `Consumer<Runnable>` that will be used to queue tasks. For example, to integrate with the Swing toolkit, you would do the following.
+
+```java
+
+var area = new IndicatorArea.Builder().
+            loop(SwingUtilities::invokeLater).
+            build()
+```
+
+If you do not provided your own queue, an internal `Executor` will be created. This executor is shutdown when the area is closed.
+ 
+### Full Example
+
+The following self-contained example should give you a good idea of how to use it.
+
+```java
+import static com.sshtools.dobbin.IndicatorMenuItem.action;
+import static com.sshtools.dobbin.IndicatorMenuItem.checkbox;
+import static com.sshtools.dobbin.IndicatorMenuItem.label;
+import static com.sshtools.dobbin.IndicatorMenuItem.separator;
+import static java.lang.Thread.sleep;
+
+public class MyIndicatorTest {
+    public static void main(String[] args) throws Exception {
+       /* Create the indicator area */
+        try(var area = new IndicatorArea.Builder().
+                build()) {
+        
+            /* Use the builder to create an Indicator */
+            try(var indicator = area.builder().
+                    
+                /* The initial indicator icon and tooltip */
+                icon(MyIndicatorTest.class.getResource("idle-48.png")).
+                tooltip("Indicator Test").
+                
+                /* Invoked when indicator is left-clicked */
+                onAction((ind) -> {
+                    System.out.println("App open! " + ind);
+                }).
+                
+                /* The initial menu. Show when indicator is right-clicked */
+                menu(label("Some label"),
+                    action("Action 1", (itm) -> {
+                        System.out.println("Action 1 " + itm);
+                    }),
+                    checkbox("Always On Top", (itm) -> {}),
+                    separator(),
+                    action("Quit", (itm) -> {
+                        System.exit(0);
+                    })).
+                
+                /* Build the indicator. It will remain until close() is called, 
+                 * or in this example when the try-with-resource goes out of scope  */
+                build()) {
+                
+                sleep(5000);
+    
+                area.task(() -> {
+                    indicator.tooltip("Changed the tooltip!");
+                });
+                
+                sleep(5000);
+    
+                area.task(() -> {
+                    indicator.icon(MyIndicatorTest.class.getResource("dialog-error-48.png"));
+                });
+                
+                sleep(5000);
+            }
+        }
+    }
+
+}
+
+```

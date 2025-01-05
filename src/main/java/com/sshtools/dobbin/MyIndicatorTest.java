@@ -20,44 +20,60 @@ import static com.sshtools.dobbin.IndicatorMenuItem.checkbox;
 import static com.sshtools.dobbin.IndicatorMenuItem.label;
 import static com.sshtools.dobbin.IndicatorMenuItem.separator;
 
+import javax.swing.SwingUtilities;
+
 public class MyIndicatorTest {
 	public static void main(String[] args) throws Exception {
-		/* Get the indicator area */
-		var area = IndicatorArea.get();
+		/* Create the indicator area */
+		try(var area = new IndicatorArea.Builder().
+				loop(SwingUtilities::invokeLater).
+				build()) {
 		
-		/* Use the builder to create an Indicator */
-		try(var indicator = area.builder().
+			/* Use the builder to create an Indicator */
+			try(var indicator = area.builder().
+					
+				/* The initial indicator icon and tooltip */
+				icon(MyIndicatorTest.class.getResource("idle-48.png")).
+				tooltip("Indicator Test").
 				
-			/* The initial indicator icon and tooltip */
-			icon(MyIndicatorTest.class.getResource("idle-48.png")).
-			tooltip("Indicator Test").
-			
-			/* Invoked when indicator is left-clicked */
-			onAction((ind) -> {
-				System.out.println("App open! " + ind);
-			}).
-			
-			/* The initial menu. Show when indicator is right-clicked */
-			menu(label("Some label"),
-				action("Action 1", (itm) -> {
-					System.out.println("Action 1 " + itm);
-				}),
-				checkbox("Always On Top", (itm) -> {}),
-				separator(),
-				action("Quit", (itm) -> {
-					System.exit(0);
-				})).
-			
-			/* Build the indicator. It will remain until close() is called, 
-			 * or in this example when the try-with-resource goes out of scope  */
-			build()) {
-			
-			Thread.sleep(5000);
-			indicator.tooltip("Change the tooltip!");
-			
-			Thread.sleep(5000);
-			indicator.icon(MyIndicatorTest.class.getResource("dialog-error-48.png"));
+				/* Invoked when indicator is left-clicked */
+				onAction((ind) -> {
+					System.out.println("App open! " + ind);
+				}).
+				
+				/* The initial menu. Show when indicator is right-clicked */
+				menu(label("Some label"),
+					action("Action 1", (itm) -> {
+						System.out.println("Action 1 " + itm);
+					}),
+					checkbox("Always On Top", (itm) -> {}),
+					separator(),
+					action("Quit", (itm) -> {
+						System.exit(0);
+					})).
+				
+				/* Build the indicator. It will remain until close() is called, 
+				 * or in this example when the try-with-resource goes out of scope  */
+				build()) {
+				
+				Thread.sleep(5000);
+	
+				area.task(() -> {
+					indicator.tooltip("Changed the tooltip!");
+				});
+				
+				Thread.sleep(5000);
+	
+				area.task(() -> {
+					indicator.icon(MyIndicatorTest.class.getResource("dialog-error-48.png"));
+				});
+				
+				Thread.sleep(5000);
+			}
 		}
+		
+		System.out.println("Shutting down");
+		Thread.sleep(5000);
 	}
 
 }

@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -189,7 +188,7 @@ public final class IndicatorMenuItem {
 	}
 
 	public List<IndicatorMenuItem> children() {
-		return Collections.unmodifiableList(children);
+		return children;
 	}
 
 	public static IndicatorMenuItem label(String text) {
@@ -202,6 +201,18 @@ public final class IndicatorMenuItem {
 	
 	public static IndicatorMenuItem separator() {
 		return new Builder(MenuItemType.SEPARATOR).build();
+	}
+	
+	public static IndicatorMenuItem submenu(String text, IndicatorMenuItem... items) {
+		return new Builder(MenuItemType.SUBMENU).text(text).menu(items).build();
+	}
+	
+	public static IndicatorMenuItem submenu(String text, Path icon, IndicatorMenuItem... items) {
+		return new Builder(MenuItemType.SUBMENU).text(text).icon(icon).menu(items).build();
+	}
+	
+	public static IndicatorMenuItem submenu(String text, URL icon, IndicatorMenuItem... items) {
+		return new Builder(MenuItemType.SUBMENU).text(text).iconURL(icon).menu(items).build();
 	}
 	
 	public static IndicatorMenuItem action(String text, IndicatorActionEvent  onAction) {
