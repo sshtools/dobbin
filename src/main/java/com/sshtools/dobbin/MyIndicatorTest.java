@@ -26,7 +26,7 @@ public class MyIndicatorTest {
 	public static void main(String[] args) throws Exception {
 		/* Create the indicator area */
 		try(var area = new IndicatorArea.Builder().
-				loop(SwingUtilities::invokeLater).
+				loop(SwingUtilities::invokeLater, SwingUtilities::isEventDispatchThread).
 				build()) {
 		
 			/* Use the builder to create an Indicator */
@@ -58,15 +58,11 @@ public class MyIndicatorTest {
 				
 				Thread.sleep(5000);
 	
-				area.task(() -> {
 					indicator.tooltip("Changed the tooltip!");
-				});
 				
 				Thread.sleep(5000);
 	
-				area.task(() -> {
 					indicator.icon(MyIndicatorTest.class.getResource("dialog-error-48.png"));
-				});
 				
 				Thread.sleep(5000);
 			}

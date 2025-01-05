@@ -31,6 +31,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class IndicatorArea implements Closeable {
 	
@@ -40,9 +41,11 @@ public final class IndicatorArea implements Closeable {
 	
 	public final static class Builder {
 		private Optional<Consumer<Runnable>> executor = Optional.empty();
+		private Optional<Supplier<Boolean>> isOnExecutorThread = Optional.empty();
 		
-		public Builder loop(Consumer<Runnable> executor) {
+		public Builder loop(Consumer<Runnable> executor, Supplier<Boolean> isOnExecutorThread) {
 			this.executor = Optional.of(executor);
+			this.isOnExecutorThread = Optional.of(isOnExecutorThread);
 			return this;
 		}
 		
@@ -52,10 +55,13 @@ public final class IndicatorArea implements Closeable {
 	}
 
 	private final Optional<Consumer<Runnable>> executor;
+	private final Optional<Supplier<Boolean>> isOnExecutorThread;
 	private ExecutorService defaultExecutor;
+	private Thread executorThread;
 
 	private IndicatorArea(Builder bldr) {
 		this.executor = bldr.executor;
+		this.isOnExecutorThread = bldr.isOnExecutorThread;
 		
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			tmpfiles.forEach(tf -> {
@@ -82,12 +88,19 @@ public final class IndicatorArea implements Closeable {
 		return new Indicator.Builder(this);
 	}
 	
+	public boolean isTaskThread() {
+		if(isOnExecutorThread.isPresent())
+			return isOnExecutorThread.get().get();
+		else
+			return Thread.currentThread().equals(executorThread);
+	}
+	
 	public void task(Runnable task) {
 		this.executor.ifPresentOrElse(exec -> {
 			exec.accept(task);
 		}, () -> {
 			if(defaultExecutor == null) {
-				defaultExecutor = Executors.newSingleThreadExecutor();
+				defaultExecutor = Executors.newSingleThreadExecutor(r -> executorThread = new Thread(r, "DobbinExecutor") );
 			}
 			defaultExecutor.submit(task);
 		});

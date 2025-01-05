@@ -22,21 +22,34 @@ public abstract class AbstractIndicator implements Indicator {
 
 	protected Path icon;
 	protected String tooltip;
-
-	@Override
-	public void icon(Path icon) {
-		if (!Objects.equals(icon, this.icon)) {
-			this.icon = icon;
-			rebuild();
-		}
+	protected final IndicatorArea indicatorArea;
+	
+	AbstractIndicator(IndicatorArea indicatorArea) {
+		this.indicatorArea = indicatorArea;
 	}
 
 	@Override
-	public void tooltip(String tooltip) {
-		if (!Objects.equals(tooltip, this.tooltip)) {
-			this.tooltip = tooltip;
-			rebuild();
+	public final void icon(Path icon) {
+		if(indicatorArea.isTaskThread()) {
+			if (!Objects.equals(icon, this.icon)) {
+				this.icon = icon;
+				rebuild();
+			}
 		}
+		else 
+			indicatorArea.task(() -> icon(icon));
+	}
+
+	@Override
+	public final void tooltip(String tooltip) {
+		if(indicatorArea.isTaskThread()) {
+			if (!Objects.equals(tooltip, this.tooltip)) {
+				this.tooltip = tooltip;
+				rebuild();
+			}
+		}
+		else  
+			indicatorArea.task(() -> tooltip(tooltip));
 	}
 
 	protected void rebuild() {

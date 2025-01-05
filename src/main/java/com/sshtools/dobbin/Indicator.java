@@ -50,11 +50,10 @@ public interface Indicator extends Closeable {
 			private final MemorySegment trayMem;
 			private final Arena arena;
 			private IndicatorMenuItem[] root = new IndicatorMenuItem[0];
-			private final IndicatorArea indicatorArea;
 			private boolean closed;
 
 			private CTrayIndicator(Builder builder) {
-				this.indicatorArea = builder.indicatorArea;
+				super(builder.indicatorArea);
 				this.tooltip = builder.tooltip.orElse("Dobbin");
 				
 				if(builder.icon.isPresent())
@@ -82,26 +81,26 @@ public interface Indicator extends Closeable {
 					tray.cb(trayMem, menucb);
 				});
 				
-				builder.indicatorArea.task(this::completeInit);
+				if(builder.indicatorArea.isTaskThread())
+					completeInit();
+				else
+					builder.indicatorArea.task(this::completeInit);
 			}
 
 			@Override
 			public void close() {
 				if(!closed) {
-					indicatorArea.task(() -> {
+					if(indicatorArea.isTaskThread()) {
+						doClose();
+					}
+					else {
+						indicatorArea.task(this::doClose);
 						try {
-							indicatorArea.remove(this);
-							tray_h.tray_exit();
+							while(!closed) {
+								Thread.sleep(1);
+							}
+						} catch (InterruptedException e) {
 						}
-						finally {
-							closed = true;
-						}
-					});
-					try {
-						while(!closed) {
-							Thread.sleep(1);
-						}
-					} catch (InterruptedException e) {
 					}
 				}
 			}
@@ -110,13 +109,13 @@ public interface Indicator extends Closeable {
 			public void icon(URL icon) {
 				icon(indicatorArea.resourceToPath(icon));
 			}
-			
+
 			@Override
 			public void update(IndicatorMenuItem... root) {
 				this.root = root;
 				rebuild();
 			}
-
+			
 			@Override
 			protected void rebuild() {
 				configure();
@@ -133,7 +132,7 @@ public interface Indicator extends Closeable {
 				queueLoop();
 				
 			}
-			
+
 			@SuppressWarnings("unused")
 			private void configure() {
 				tray.icon_filepath(trayMem, arena.allocateFrom(icon.toString(), Charset.forName("US-ASCII")));
@@ -168,6 +167,16 @@ public interface Indicator extends Closeable {
 					}
 				}
 				tray.menu(trayMem, items);
+			}
+			
+			private void doClose() {
+				try {
+					indicatorArea.remove(this);
+					tray_h.tray_exit();
+				}
+				finally {
+					closed = true;
+				}
 			}
 
 			private boolean loop() {
