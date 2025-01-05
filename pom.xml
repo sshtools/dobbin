@@ -26,6 +26,9 @@
 		<maven.compiler.source>23</maven.compiler.source>
 		<maven.compiler.target>23</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <build.projectProperties>${basedir}/jadaptive.build.properties</build.projectProperties>
+        <build.userProperties>${user.home}/.jadaptive.build.properties</build.userProperties>
+        <build.quietProperties>true</build.quietProperties>
 	</properties>
 
 	<inceptionYear>2025</inceptionYear>
@@ -176,7 +179,7 @@
 							<goal>read-project-properties</goal>
 						</goals>
 						<configuration>
-							<quiet>true</quiet>
+							<quiet>${build.quietProperties}</quiet>
 							<files>
 								<file>${build.projectProperties}</file>
 								<file>${build.userProperties}</file>
