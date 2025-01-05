@@ -40,6 +40,7 @@ public final class IndicatorBuilder {
 
 	private Optional<String> tooltip = Optional.empty();
 	private Optional<Path> icon = Optional.empty();
+	private Optional<URL> iconURL = Optional.empty();
 	private Optional<IndicatorEvent> onAction = Optional.empty();
 	private final List<IndicatorMenuItem> menu = new ArrayList<>();
 	private final IndicatorArea indicatorArea;
@@ -122,8 +123,9 @@ public final class IndicatorBuilder {
 	 * @param icon icon name or path
 	 * @return this for chaining
 	 */
-	public IndicatorBuilder icon(URL icon) {
-		return icon(indicatorArea.resourceToPath(icon));
+	public IndicatorBuilder icon(URL iconURL) {
+		this.iconURL = Optional.of(iconURL);
+		return this;
 	}
 
 	/**
@@ -164,7 +166,18 @@ public final class IndicatorBuilder {
 		private CTrayIndicator(IndicatorBuilder builder) {
 			this.indicatorArea = builder.indicatorArea;
 			this.tooltip = builder.tooltip.orElse("Dobbin");
-			this.icon = builder.icon.orElseGet(() -> builder.indicatorArea.resourceToPath(IndicatorArea.class.getResource("idle-48.png")));
+			
+			if(builder.icon.isPresent())
+				this.icon = builder.icon.get();
+			else {
+				if(builder.iconURL.isPresent()) {
+					this.icon = builder.indicatorArea.resourceToPath(builder.iconURL.get());
+				}
+				else {
+					this.icon = builder.indicatorArea.resourceToPath(IndicatorArea.class.getResource("idle-48.png"));
+				}
+			}
+			
 			this.root = builder.menu.toArray(new IndicatorMenuItem[0]); 
 			
 			arena = Arena.ofAuto();
