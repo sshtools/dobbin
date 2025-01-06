@@ -125,16 +125,20 @@ public interface Indicator extends Closeable {
 				
 			}
 
-			@SuppressWarnings("unused")
 			private void configure() {
 				tray.icon_filepath(trayMem, arena.allocateFrom(icon.toString(), Charset.forName("US-ASCII")));
 				tray.tooltip(trayMem, arena.allocateFrom(tooltip, Charset.forName("US-ASCII")));
+				tray.menu(trayMem, buildMenu(root));
+			}
+
+			@SuppressWarnings("unused")
+			private MemorySegment buildMenu(IndicatorMenuItem[] root) {
 				var items = tray_menu_item.allocateArray(root.length + 1, arena);
 				for(var i = 0 ; i< root.length; i++) {
 					var itemSeg = tray_menu_item.asSlice(items, i);
 					var item = root[i];
 					
-					tray_menu_item.text(itemSeg, arena.allocateFrom(item.text(), Charset.forName("US-ASCII")));
+					tray_menu_item.text(itemSeg, arena.allocateFrom(item.resolveText(), Charset.forName("US-ASCII")));
 					
 					switch(item.type()) {
 					case ACTION:
@@ -154,11 +158,19 @@ public interface Indicator extends Closeable {
 						break;
 					case SEPARATOR:
 						break;
+					case SUBMENU:
+						tray_menu_item.submenu(itemSeg, buildMenu(item.children().toArray(new IndicatorMenuItem[0])));
+						item.onAction().ifPresent(act -> {
+							tray_menu_item.cb(itemSeg, tray_menu_item.cb.allocate(seg -> {
+								act.action(item);
+							}, arena));
+						});
+						break;
 					default:
 						break;
 					}
 				}
-				tray.menu(trayMem, items);
+				return items;
 			}
 			
 			private void doClose() {

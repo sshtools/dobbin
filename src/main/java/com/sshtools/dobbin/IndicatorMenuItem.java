@@ -178,6 +178,15 @@ public final class IndicatorMenuItem {
 	 * public void onAction(IndicatorActionEvent onAction) { this.onAction =
 	 * Optional.of(onAction); }
 	 */
+	
+	String resolveText() {
+		switch(type) {
+		case SEPARATOR:
+			return "-";
+		default:
+			return text;
+		}
+	}
 
 	Optional<IndicatorActionEvent> onAction() {
 		return onAction;
@@ -241,6 +250,12 @@ public final class IndicatorMenuItem {
 	
 	public static IndicatorMenuItem checkbox(String text, boolean checked, boolean disabled, IndicatorActionEvent onAction) {
 		return new Builder(MenuItemType.CHECKBOX).text(text).checked(checked).disabled(disabled).onAction(onAction).build();
+	}
+
+	@Override
+	public String toString() {
+		return "IndicatorMenuItem [type=" + type + ", text=" + text + ", disabled=" + disabled + ", checked=" + checked
+				+ ", icon=" + icon + ", iconURL=" + iconURL + ", onAction=" + onAction + ", children=" + children.size() + "]";
 	}
 
 }
