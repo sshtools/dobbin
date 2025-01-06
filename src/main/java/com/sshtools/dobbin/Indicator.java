@@ -81,26 +81,18 @@ public interface Indicator extends Closeable {
 					tray.cb(trayMem, menucb);
 				});
 				
-				if(builder.indicatorArea.isTaskThread())
-					completeInit();
-				else
-					builder.indicatorArea.task(this::completeInit);
+				builder.indicatorArea.task(this::completeInit);
 			}
 
 			@Override
 			public void close() {
 				if(!closed) {
-					if(indicatorArea.isTaskThread()) {
-						doClose();
-					}
-					else {
-						indicatorArea.task(this::doClose);
-						try {
-							while(!closed) {
-								Thread.sleep(1);
-							}
-						} catch (InterruptedException e) {
+					indicatorArea.task(this::doClose);
+					try {
+						while(!closed) {
+							Thread.sleep(1);
 						}
+					} catch (InterruptedException e) {
 					}
 				}
 			}
