@@ -26,7 +26,8 @@ public class MyIndicatorTest {
 	public static void main(String[] args) throws Exception {
 		/* Create the indicator area */
 		try(var area = new IndicatorArea.Builder().
-//				loop(SwingUtilities::invokeLater).
+//				blocking().
+				loop(SwingUtilities::invokeLater).
 				build()) {
 		
 			/* Use the builder to create an Indicator */

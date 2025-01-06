@@ -40,6 +40,16 @@ public final class IndicatorArea implements Closeable {
 	
 	public final static class Builder {
 		private Optional<Consumer<Runnable>> executor = Optional.empty();
+		private boolean blocking;
+
+		public Builder blocking() {
+			return blocking(true);
+		}
+		
+		public Builder blocking(boolean blocking) {
+			this.blocking = blocking;
+			return this;
+		}
 		
 		public Builder loop(Consumer<Runnable> executor) {
 			this.executor = Optional.of(executor);
@@ -53,9 +63,11 @@ public final class IndicatorArea implements Closeable {
 
 	private final Optional<Consumer<Runnable>> executor;
 	private ExecutorService defaultExecutor;
+	private final boolean blocking;
 
 	private IndicatorArea(Builder bldr) {
 		this.executor = bldr.executor;
+		this.blocking = bldr.blocking;
 		
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			tmpfiles.forEach(tf -> {
@@ -124,6 +136,10 @@ public final class IndicatorArea implements Closeable {
 				}
 			}
 		}
+	}
+	
+	boolean blocking() {
+		return blocking;
 	}
 
 	void add(Indicator indicator) {

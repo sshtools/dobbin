@@ -81,7 +81,12 @@ public interface Indicator extends Closeable {
 					tray.cb(trayMem, menucb);
 				});
 				
-				builder.indicatorArea.task(this::completeInit);
+				if(indicatorArea.blocking()) {
+					completeInit();
+					while(loop());
+				}
+				else
+					builder.indicatorArea.task(this::completeInit);
 			}
 
 			@Override
@@ -121,7 +126,8 @@ public interface Indicator extends Closeable {
 					throw new IllegalStateException("Failed to initialise tray.");
 				}
 				
-				queueLoop();
+				if(!indicatorArea.blocking())
+					queueLoop();
 				
 			}
 
@@ -184,7 +190,7 @@ public interface Indicator extends Closeable {
 			}
 
 			private boolean loop() {
-				return !closed && tray_h.tray_loop(0) == 0;
+				return !closed && tray_h.tray_loop(indicatorArea.blocking() ? 1 : 0) == 0;
 			}
 			
 			private void queueLoop() {
